@@ -1,4 +1,5 @@
 #pragma strict
+import System.Collections.Generic;
 
 //rift variables 
 var riftCenter : GameObject; 
@@ -9,8 +10,9 @@ var riftRight : GameObject;
 var speed : float = 0.1f; 
 
 //head-gaze heat map variables 
-var gazeFrequencies = new Hashtable(); 
-var material : Material = null; 
+var userTag : String = "UserTag"; 
+var gazeFrequencies = new Dictionary.<String, int>(); 
+var standardMat : Material = null; 
 
 function Start () {
 	riftCenter = GameObject.Find("CenterEyeAnchor"); 
@@ -19,7 +21,11 @@ function Start () {
 }
 
 function Update () {
-
+	//UNCOMMENT WHEN RIFT ATTACHED: MovePlayer();
+	CheckGaze(); 
+	if (NormalizeFrequencies() > -1) {
+		UpdateColorMap(); 
+	}
 }
 
 //function to move player forward based on head gaze 
@@ -36,18 +42,65 @@ function MovePlayer() {
 //function to increment the number of times player "gazes" at an object 
 function CheckGaze() {
 	var hit : RaycastHit; 
-	var ray = new Ray (riftCenter.transform.position, riftCenter.transform.forward);  
+	//UNCOMMENT WHEN RIFT ATTACHED: var ray = new Ray (riftCenter.transform.position, riftCenter.transform.forward);  
+	var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+	var source : GameObject; 
 	var sourceName : String; 
 	if (Physics.Raycast (ray, hit, 100)) {
-		sourceName = hit.collider.gameObject.name; 
-		//TO DO: check if gameObject has special tag 
-		if (!gazeFrequencies.Contains(sourceName)) {
+		source = hit.collider.gameObject; 
+		sourceName = source.name; 
+		Debug.Log("Hit object: " + sourceName); 
+		//UNCOMMENT AFTER TAGGING OBJECTS 
+		//if (source.tag.Equals(userTag))
+		if (!gazeFrequencies.ContainsKey(sourceName)) {
 			gazeFrequencies.Add(sourceName, 0); 
 		}
-		var frequency : int = gazeFrequencies[sourceName]; 
-		gazeFrequencies.Add(sourceName, frequency + 1); 
+		var frequency = gazeFrequencies[sourceName] + 1; 
+		gazeFrequencies.Remove(sourceName); 
+		gazeFrequencies.Add(sourceName, frequency); 
+		Debug.Log("Gaze frequency: " + gazeFrequencies[sourceName]); 
 	}
 }
 
+function GetMaxValue() {
+	var maxKey : String = ""; 
+	var maxVal : int = 0; 
+	for (var key in gazeFrequencies.Keys) {
+		var val = gazeFrequencies[key]; 
+		if (val > maxVal) {
+			maxKey = key; 
+			maxVal = val; 
+		}
+	}
+	return maxVal; 	
+}
 
+function NormalizeFrequencies() {
+	var maxValue : int = GetMaxValue(); 
+	if (maxValue <= 0) return -1; 
+	else {
+		for (var key in gazeFrequencies.Keys) {
+			Debug.Log("Max Value: " + maxValue); 
+			Debug.Log("Current Val: " + gazeFrequencies[key]); 
+			var normalized = gazeFrequencies[key]/(Mathf.Ceil(maxValue/255)); 
+			Debug.Log("Mathf.Ceil(maxValue/255): " + Mathf.Ceil(maxValue/255));
+			var original = gazeFrequencies[key];
+			original = normalized; 
+			Debug.Log("Normalized Val: " + original); 
+		}
+		return 0; 
+	}
+}
 
+function UpdateColorMap() {
+	for (var key in gazeFrequencies.Keys) {
+		var object : GameObject = GameObject.Find(key); 
+		if (object != null) {
+			var renderer : Renderer = object.GetComponent.<Renderer>(); 
+			var redVal : byte = gazeFrequencies[key]; 
+			//originalColor = new Color32(redVal, 0, 255-redVal, 0); 
+			var newColor : Color = new Color32(255, 255, 255, 0); 
+			renderer.material.SetColor("_Color", newColor); 
+		}
+	}
+}
