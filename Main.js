@@ -15,6 +15,7 @@ var gazeFrequencies = new Dictionary.<String, int>();
 var standardMat : Material = null; 
 
 function Start () {
+	AddMeshCollider();
 	riftCenter = GameObject.Find("CenterEyeAnchor"); 
 	riftLeft = GameObject.Find("LeftEyeAnchor");
 	riftRight = GameObject.Find("RightEyeAnchor"); 
@@ -36,6 +37,15 @@ function MovePlayer() {
 	if (Input.GetMouseButton (0) && riftCenter != null) {
 		//move player forward using ray cast by rift 
 		transform.position += riftTransform.forward * speed; 
+	}
+}
+
+//function to add mesh renderers to objects so they can be detected for collisions 
+function AddMeshCollider() {
+	var gameObjects : GameObject[] = FindObjectsOfType(GameObject) as GameObject[];
+	for (var object in gameObjects) {
+		object.AddComponent.<MeshCollider>(); 
+		Debug.Log("Added mesh renderer to: " + object.name); 
 	}
 }
 
@@ -62,6 +72,7 @@ function CheckGaze() {
 	}
 }
 
+//get gaze frequency of "most-gazed-at" object 
 function GetMaxValue() {
 	var maxKey : String = ""; 
 	var maxVal : int = 0; 
@@ -75,6 +86,7 @@ function GetMaxValue() {
 	return maxVal; 	
 }
 
+//normalize frequencies of gaze to 255 
 function NormalizeFrequencies() {
 	var maxValue : int = GetMaxValue(); 
 	if (maxValue <= 0) return -1; 
@@ -92,15 +104,18 @@ function NormalizeFrequencies() {
 	}
 }
 
+//update color of objects according to normalized gaze frequencies 
 function UpdateColorMap() {
 	for (var key in gazeFrequencies.Keys) {
 		var object : GameObject = GameObject.Find(key); 
 		if (object != null) {
 			var renderer : Renderer = object.GetComponent.<Renderer>(); 
 			var redVal : byte = gazeFrequencies[key]; 
-			//originalColor = new Color32(redVal, 0, 255-redVal, 0); 
-			var newColor : Color = new Color32(255, 255, 255, 0); 
+			var newColor : Color = new Color32(redVal, 0, 255-redVal, 0); 
 			renderer.material.SetColor("_Color", newColor); 
 		}
 	}
 }
+
+
+
